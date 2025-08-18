@@ -79,7 +79,7 @@ class Block(nn.Module):
 @dataclass
 class Config:
     block_size: int = 1024
-    vocabulary_size: int = 50257
+    vocab_size: int = 50257
     n_layer: int = 12
     n_head: int = 12
     n_embd: int = 768
@@ -92,12 +92,12 @@ class GPT(nn.Module):
         self.config = config
 
         self.transformer = nn.ModuleDict(dict(
-            wte = nn.Embedding(config.vocabulary_size, config.n_embd),
+            wte = nn.Embedding(config.vocab_size, config.n_embd),
             wpe = nn.Embedding(config.block_size, config.n_embd),
             h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
             ln_f = nn.LayerNorm(config.n_embd),
         ))
-        self.lm_head = nn.Linear(config.n_embd, config.vocabulary_size, bias=False)
+        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
 
         self.transformer.wte.weight = self.lm_head.weight # tie weights
         self.apply(self._init_weights)  # initialize weights
@@ -152,7 +152,7 @@ class GPT(nn.Module):
             'gpt2-xl': dict(n_embd=1600, n_layer=48, n_head=25) # 1558M
         }[model_name_or_path]
 
-        configs['vocabulary_size'] = 50257 # these are the same for all models
+        configs['vocab_size'] = 50257 # these are the same for all models
         configs['block_size'] = 1024
 
         config = Config(**configs)
@@ -340,7 +340,7 @@ train_loader = DataLoader(batch_size=micro_batch_size, seq_length=seq_length, fi
 
 torch.set_float32_matmul_precision('high') # use TF32 (or try to)
 
-model = GPT(Config(vocabulary_size=50257))  # can also override this to 50304 
+model = GPT(Config(vocab_size=50257))  # can also override this to 50304 
                                             # (has a lot of powers of 2, easy for matmul to process)
                                             # keep in mind that you need to change the tokenizer too.
 
