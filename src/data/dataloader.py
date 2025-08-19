@@ -2,14 +2,14 @@ import tiktoken
 import torch
 
 class DataLoader:
-    def __init__(self, logger, batch_size, seq_length, filepath="input.txt"):
+    def __init__(self, logger, encoding, batch_size, seq_length, filepath="input.txt"):
         self.batch_size = batch_size
         self.seq_length = seq_length
 
         with open(filepath, "r", encoding="utf-8") as f:
             text = f.read()
 
-        self.enc = tiktoken.get_encoding("gpt2")
+        self.enc = tiktoken.get_encoding(encoding)
         ids = self.enc.encode(text)
         self.tokens = torch.tensor(ids, dtype=torch.long)
         self.num_tokens = len(self.tokens)

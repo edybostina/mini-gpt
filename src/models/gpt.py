@@ -2,15 +2,17 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from .transformer_blocks import Block
+from dataclasses import dataclass
+import tiktoken
 
 # default params are configured for the GPT2 124M model
+@dataclass
 class Config:
-    def __init__(self, vocab_size=50257, block_size=1024, n_layer=12, n_head=12, n_embd=768):
-        self.vocab_size = vocab_size
-        self.block_size = block_size
-        self.n_layer = n_layer
-        self.n_head = n_head
-        self.n_embd = n_embd
+    block_size: int = 1024
+    vocab_size: int = 50257
+    n_layer: int = 12
+    n_head: int = 12
+    n_embd: int = 768
 
 class GPT(nn.Module):
     def __init__(self, config):
@@ -60,8 +62,33 @@ class GPT(nn.Module):
         loss = None
         if targets is not None:
             # compute the loss
-            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
         return logits, loss
+
+    @torch.no_grad
+    def generate_text(self, prompt, encoding="gpt2", max_new_tokens=100, temperature=1.0, top_p=0.9, device='cpu'):
+        enc = tiktoken.get_encoding(encoding)
+        self.eval()
+        idx = torch.tensor([enc.encode(prompt)], dtype=torch.long, device=device)
+
+        for _ in range(max_new_tokens):
+            # crop to block_size to avoid pos-embed overflow
+            idx_cond = idx[:, -self.config.block_size:]
+            logits, _ = self(idx_cond)
+            logits = logits[:, -1, :] / max(1e-9, temperature)
+            probs = torch.softmax(logits, dim=-1)
+
+            sorted_probs, sorted_idx = torch.sort(probs, descending=True)
+            cum = torch.cumsum(sorted_probs, dim=-1)
+            cutoff = cum > top_p
+            sorted_probs[cutoff] = 0
+            sorted_probs.div_(sorted_probs.sum(dim=-1, keepdim=True))
+
+            next_id = torch.gather(sorted_idx, -1, torch.multinomial(sorted_probs, num_samples=1))
+            idx = torch.cat([idx, next_id], dim=1)
+
+        return enc.decode(idx[0].tolist())
+
 
     @classmethod
     def from_pretrained(cls, model_name_or_path):

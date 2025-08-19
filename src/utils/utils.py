@@ -1,31 +1,10 @@
 import torch
-import tiktoken
 import math
 import yaml
+import random
+import numpy as np
+import os
 
-@torch.no_grad()
-def generate_text(model, prompt, max_new_tokens=100, temperature=1.0, top_p=0.9, device='cpu'):
-    enc = tiktoken.get_encoding("gpt2")
-    model.eval()
-    idx = torch.tensor([enc.encode(prompt)], dtype=torch.long, device=device)
-
-    for _ in range(max_new_tokens):
-        # crop to block_size to avoid pos-embed overflow
-        idx_cond = idx[:, -model.config.block_size:]
-        logits, _ = model(idx_cond)
-        logits = logits[:, -1, :] / max(1e-9, temperature)
-        probs = torch.softmax(logits, dim=-1)
-
-        sorted_probs, sorted_idx = torch.sort(probs, descending=True)
-        cum = torch.cumsum(sorted_probs, dim=-1)
-        cutoff = cum > top_p
-        sorted_probs[cutoff] = 0
-        sorted_probs.div_(sorted_probs.sum(dim=-1, keepdim=True))
-
-        next_id = torch.gather(sorted_idx, -1, torch.multinomial(sorted_probs, num_samples=1))
-        idx = torch.cat([idx, next_id], dim=1)
-
-    return enc.decode(idx[0].tolist())
 
 @torch.no_grad()
 def eval_loss(model, loader, iters=50, device='cpu'):
@@ -68,3 +47,24 @@ def load_config(path):
     with open(path, 'r') as f:
         config = yaml.safe_load(f)
     return config
+
+
+def set_seed(seed: int, deterministic: bool = False) -> None:
+    if seed is None:
+        return
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+    # optional deterministic behavior (may slow down and might not be fully deterministic across platforms)
+    if deterministic:
+        try:
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+        except Exception:
+            pass

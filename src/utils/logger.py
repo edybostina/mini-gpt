@@ -2,21 +2,18 @@ import logging
 import os
 import sys
 
-def get_logger(name: str = "gpt", log_dir: str | None = None, rank: int = 0) -> logging.Logger:
+def get_logger(name: str = "gpt", log_dir: str | None = "logs",
+    exp_name: str | None = None, rank: int = 0, verbose: bool = False) -> logging.Logger:
     """
-    Returns a logger with both console and optional file logging.
-
-    Args:
-        name (str): Logger name.
-        log_dir (str, optional): If provided, logs will also be saved to a file in this directory.
-        rank (int): For distributed training; only rank 0 should log to avoid spam.
+    Logger with console + file output.
     """
     logger = logging.getLogger(name)
 
     if logger.handlers:
         return logger
 
-    logger.setLevel(logging.INFO if rank == 0 else logging.ERROR)
+    level = logging.DEBUG if verbose and rank == 0 else (logging.INFO if rank == 0 else logging.ERROR)
+    logger.setLevel(level)
     formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S")
 
     if rank == 0:
@@ -25,9 +22,19 @@ def get_logger(name: str = "gpt", log_dir: str | None = None, rank: int = 0) -> 
         logger.addHandler(console_handler)
 
         if log_dir is not None:
-            os.makedirs(log_dir, exist_ok=True)
-            file_handler = logging.FileHandler(os.path.join(log_dir, f"{name}.log"))
+            if exp_name is None:
+                exp_name = name
+            exp_dir = os.path.join(log_dir, exp_name)
+            os.makedirs(exp_dir, exist_ok=True)
+
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_path = os.path.join(exp_dir, f"{exp_name}_{timestamp}.log")
+
+            file_handler = logging.FileHandler(log_path)
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
+
+            logger.info(f"Logging to {log_path}")
 
     return logger

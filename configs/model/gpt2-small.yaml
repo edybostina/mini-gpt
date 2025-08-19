@@ -6,14 +6,15 @@ model:
   block_size: 1024
 
 training:
-  batch_size: 524288
+  encoding: gpt2
+  batch_size: 128
   micro_batch_size: 1
-  seq_length: 1024
+  seq_length: 128
   nr_return_sequences: 5
   max_length: 30
   max_learning_rate: 0.0006
   min_learning_rate: 0.00006
-  warmup_steps: 10
-  max_steps: 50
+  warmup_steps: 1
+  max_steps: 5
   seed: 69
   weight_decay: 0.1
