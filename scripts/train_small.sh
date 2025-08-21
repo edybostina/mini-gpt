@@ -34,9 +34,7 @@ echo "Logging to $LOGFILE"
 
 
 cleanup() {
-    echo "Caught interrupt. Attempting to save checkpoint..."
-    # TODO: implement python side to save checkpoint
-
+    echo "Caught interrupt. Python should have saved a checkpoint."
     exit 1
 }
 trap cleanup SIGINT SIGTERM

@@ -91,9 +91,9 @@ def main():
             start_step = checkpoint["step"]
         logger.info(f"Resumed from checkpoint {args.resume} at step {start_step}")
 
-    train_loop(model, dataloader, optimizer, device, cfg["training"], logger, start_step=start_step)
+    train_loop(model, dataloader, optimizer, device, cfg["training"], logger, args.save_path, start_step=start_step)
 
-    save_checkpoint(model, optimizer, args.save_path)
+    save_checkpoint(args.save_path, model, optimizer, cfg["training"]["max_steps"])
     logger.info(f"Training complete. Final checkpoint saved at {args.save_path}")
 
     print(model.generate_text(

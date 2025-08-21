@@ -4,6 +4,10 @@ import yaml
 import random
 import numpy as np
 import os
+import signal
+import sys
+
+from ..train.checkpointing import save_checkpoint
 
 
 @torch.no_grad()
@@ -36,7 +40,7 @@ def get_optimal_device():
     device = "cpu"
     if torch.cuda.is_available():
         device = "cuda"
-    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    if torch.backends.mps.is_available():
         device = "mps"
     return device
 
@@ -68,3 +72,18 @@ def set_seed(seed: int, deterministic: bool = False) -> None:
             torch.backends.cudnn.benchmark = False
         except Exception:
             pass
+
+
+def register_signal_handlers(model, optimizer, step_holder, logger, checkpoint_path="checkpoints"):
+    def handle_signal(signum, frame):
+        step = step_holder["step"]
+        logger.warning(f"Caught signal {signum}. Saving emergency checkpoint at step {step}...")
+        try:
+            save_checkpoint(f"{checkpoint_path}/interrupt_step_{step}.pt", model, optimizer, step=step)
+            logger.warning("Checkpoint saved successfully.")
+        except Exception as e:
+            logger.error(f"Failed to save checkpoint: {e}")
+        sys.exit(1)
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)

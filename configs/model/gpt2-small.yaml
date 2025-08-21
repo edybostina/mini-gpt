@@ -4,17 +4,19 @@ model:
   n_head: 12
   vocab_size: 50257
   block_size: 1024
-
 training:
   encoding: gpt2
-  batch_size: 128
+  batch_size: 524288
   micro_batch_size: 1
-  seq_length: 128
+  seq_length: 1024
   nr_return_sequences: 5
   max_length: 30
   max_learning_rate: 0.0006
-  min_learning_rate: 0.00006
-  warmup_steps: 1
-  max_steps: 5
+  min_learning_rate: 6.0e-05
+  warmup_steps: 10
+  max_steps: 1000
   seed: 69
   weight_decay: 0.1
+  eval_interval: 50
+  eval_iters: 50
+  deterministic: True

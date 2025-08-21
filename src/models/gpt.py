@@ -27,7 +27,7 @@ class GPT(nn.Module):
         ))
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
 
-        self.transformer.wte.weight = self.lm_head.weight # tie weights
+        self.lm_head.weight = self.transformer.wte.weight # tie weights
         self.apply(self._init_weights)  # initialize weights
 
     def _init_weights(self, module):
@@ -41,6 +41,10 @@ class GPT(nn.Module):
 
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
+        elif isinstance(module, nn.LayerNorm):
+            torch.nn.init.ones_(module.weight)
+            torch.nn.init.zeros_(module.bias)
 
     def forward(self, idx, targets=None):
         batch_size, seq_length = idx.size()
